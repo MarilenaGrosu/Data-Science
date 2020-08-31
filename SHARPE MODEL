@@ -1,0 +1,64 @@
+#path<-"C:\\Users\Marii\Desktop\Data Science"
+#msf<-read.table(file.path(path, 'Yahoo.txt'), sep='\t', header=TRUE, dec=".") #Incarcarea datelor
+msf<-read.table(file.choose(),sep='\t', header=TRUE) msf
+View(msf)
+#Stergerea inregistrarilor nule msf<-na.omit(msf)
+msf attach(msf) names(msf)
+boxplot(Rm, horizontal=TRUE) boxplot(Ra1, horizontal=TRUE) boxplot(Ra2, horizontal=TRUE) ###Dependenta dintre piata si active plot(Rm, Ra1)
+abline(lm(Ra1~Rm), col="red") plot(Rm, Ra2) abline(lm(Ra2~Rm), col="orange") cor(Rm, Ra1)
+cor(Rm, Ra2) ###Testarea stationaritatii plot(Rm, type="l") lines(Ra1, col="red") lines(Ra2, col="orange")
+###Estimare model Sharpe model1<-lm(Ra1~Rm) summary(model1) model2<-lm(Ra2~Rm) summary(model2)
+ 
+windows() layout(matrix(1:6, nrow=2))
+plot(model1, which=1:6, ask=FALSE) windows()
+layout(matrix(1:6, nrow=2)) plot(model2, which=1:6, ask=FALSE) #####Valori lipsa ---> prima metoda mis #install.packages("mice") #install.packages("VIM") #install.packages("missForest") #install.packages("Amelia") #install.packages("Hmisc") #install.packages("mi") #install.packages("foreign") library(mice)
+library(missForest) library(VIM) library(Amelia) library(Hmisc) library(mi)
+msf.mis<-subset(msf, select=-c(Date, LYB, ALB, S.P.500)) #le scot msf.mis
+msf.mis<-prodNA(msf.mis, noNA=0.1) # generare 10% valori lipsa pentru ca nu erau summary(msf.mis)
+#patternul valorilor lipsa
+md.pattern(msf.mis) #--- albastru -> prezente, mov-absente #sau
+#mice_plot<-aggr(msf.mis, col=c('navyblue', 'yellow'), numbers=TRUE, sortvars=TRUE, labels=names(msf.mis), cex.axis=.7, gap=3, ylab=c("Missing data", "Pattern"))
+#mice_plot #imputarea datelor
+#predictive mean matching = pmm
+ 
+imputed_msf_mice<-mice(msf.mis, m=5, maxit=50, method='pmm', seed=500) summary(imputed_msf_mice)
+#Check imputed values imputed_msf_mice$imp$Rm plot(imputed_msf_mice)
+#get complete data(2nd out of 5)
+completeData<-mice::complete(imputed_msf_mice, mean(1,2,3,4,5)) completeData
+plot(completeData$Rm, type="l") lines(msf$Rm, col="red")
+##################Hmisc ### se efectueaza pentru valori lipsa - metoda 2!!! # impute with mean value
+imputed_Ra1hmean <- with(msf.mis, impute(Ra1, mean)) imputed_Ra1hmean
+# impute with random value
+imputed_Ra1hrand <- with(msf.mis, impute(Ra1, 'random')) imputed_Ra1hrand
+#similarly you can use min, max, median to impute missing value #using argImpute
+impute_arg <- aregImpute(~ Ra1 + Ra2 + Rm, data = msf.mis, n.impute = 5) #argImpute() automatically identifies the variable type and treats them accordingly. impute_arg
+#check imputed variable Sepal.Length impute_arg$imputed$Rm
+completeData2	<-	impute.transcan(impute_arg,	imputation=mean(1,2,3,4,5),	data=msf.mis, list.out=TRUE,pr=FALSE, check=FALSE)
+head(completeData2) plot(completeData2$Rm,type="l") lines(msf$Rm, col="red") lines(completeData$Rm, col="green") #######################Amelia
+#specify columns and run amelia
+ 
+amelia_fit <- amelia(msf.mis, m=5, p2s=1) #access imputed outputs amelia_fit$imputations[[1]] amelia_fit$imputations[[2]] amelia_fit$imputations[[3]] amelia_fit$imputations[[4]] amelia_fit$imputations[[5]]
+#To check a particular column in a data set, use the following commands amelia_fit$imputations[[5]]$Rm amelia_fit$imputations[[mean(1,2,3,4,5)]]$Rm plot(completeData2$Rm,type="l")
+lines(msf$Rm, col="red") #adevarate lines(completeData$Rm, col="green")
+lines(amelia_fit$imputations[[mean(1,2,3,4,5)]]$Rm, col="pink") #export the outputs to csv files
+#write.amelia(amelia_fit, file.stem = "imputed_data_set") #### o3 - vizualizare ouliers install.packages("OutliersO3") install.packages("ggplot2")
+install.packages("GGally") install.packages("dplyr") library(OutliersO3) library(ggplot2) library(GGally) library(dplyr)
+msfo<-na.omit(subset(msf, select=-c(Date, LYB, ALB, S.P.500))) sx <- O3prep(msfo)
+O3x1 <- O3plotT(sx)
+O3x1$gO3
+## 'Analiza outliers cu metoda HDoutliers la 3 nivele diferite de toleranta, $0.1$ (khaki), $0.05$ (yellow), $0.01$ (red).'----
+sy <- O3prep(msfo, method="HDo", tols=c(0.1, 0.05, 0.01), boxplotLimits=c(3, 6, 10))
+ 
+O3sy <- O3plotT(sy)
+O3sy$gO3
+## Analiza outliers cu metoda HDoutliers si FastPCS.'----
+sz <- O3prep(msfo, method=c("HDo", "PCS"), tolHDo=0.05, tolPCS=0.05) O3sz <- O3plotM(sz, coltxtsize=10)
+O3sz$gO3
+## Analiza outliers cu toate cele 6 metode'----
+sw <- O3prep(msfo, method=c("HDo", "PCS", "BAC", "adjOut", "DDC", "MCD"), tolHDo=0.01, tolPCS=0.01, tolBAC=0.01, toladj=0.01, tolDDC=0.01, tolMCD=0.01, boxplotLimits=6)
+O3sw <- O3plotM(sw, coltxtsize=8)
+O3sw$gO3
+## tabel metode
+cx <- data.frame(nOut=O3sw$nOut)
+rownames(cx) <- c("HDoutliers", "FastPCS", "mvBACON", "adjOutlyingness", "DetectDeviatingCells", "covMCD") cx
+knitr::kable(t(cx), row.names=FALSE, caption="Total numbers of outliers identified for one or more of the variable combinations by each of six different methods.")
