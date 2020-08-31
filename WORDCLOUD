@@ -1,0 +1,27 @@
+############################## Obiectivul: NOR DE CUVINTE - date: text
+#install.packages("tm") #install.packages("wordcloud")
+ 
+#install.packages("SnowballC") #install.packages("RColorBrewer") library(tm)
+library(SnowballC) library(wordcloud) library(RColorBrewer)
+a<-readLines("C:/Users/Marii/Desktop/Proiect/date - aplicatia 3.txt") a
+View(a)
+sursa<-VectorSource(a) sursa
+corpus<-Corpus(sursa)
+corpus<-tm_map(corpus, content_transformer(tolower)) corpus<-tm_map(corpus, removePunctuation)
+corpus<-tm_map(corpus, stripWhitespace) corpus<-tm_map(corpus, removeNumbers)
+corpus<-tm_map(corpus, removeWords, stopwords("english")) #sterge prepozitiile corpus
+#corpus<-tm_map(corpus, content_transformer(gsub), pattern="statistical", replacement="statistics")
+#stergere<-c("performance", "contribuie", "work") !!! etc cuvinte care nu au importanta, care nu aduc un plus de informatie
+#corpus<-tm_map(corpus, removeWords, stergere)
+stergere<-c("basic", "materials", "sector", "companies", "also", "many", "within", "used", "includes", "said", "including", "daisy")# !!! etc cuvinte care nu au importanta, care nu aduc un plus de informatie
+corpus<-tm_map(corpus, removeWords, stergere) #Corpus=colectie de documente
+#MAtrix transforma corpus intr-o matrice -> Linii(Nr de paragrafe) si coloane(toate cuvintele) dtm<-DocumentTermMatrix(corpus)
+dtm View(dtm) dim(dtm)
+dtm2<-as.matrix(dtm)
+ 
+frequency<-colSums(dtm2)
+frequency<-sort(frequency, decreasing=TRUE) frequency[1:10] #cele mai frecvente cuvinte
+### DAca vrem sa vedem cu ce se asociaza un cuvant findAssocs(dtm, "chemicals", 0.8)
+findAssocs(dtm, "metals", 0.5)
+set.seed(1) #sa nu se schimbe ordinea cuvintelor din grafic wordcloud(names(frequency), frequency, min.freq=10) windows()
+wordcloud(names(frequency[1:10]), frequency[1:10], colors=brewer.pal(6, "Dark2"))
