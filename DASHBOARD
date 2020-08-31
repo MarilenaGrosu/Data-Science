@@ -1,0 +1,38 @@
+# ~~~~~~~~~~~~~~~~~~~~~~~~DASHBOARD~~~~~~~~~~~~~~~~~~~~~~~~ #install.packages("shiny")
+#install.packages ("flexdashboard") #install.packages("shinydashboard") #install.packages("plotly") #install.packages("ggplot2") library(ggplot2)
+library(shiny) library(flexdashboard) library(shinydashboard) library(plotly)
+ 
+# Importul datelor in R
+date <- read.csv("C:/Users/Marii/Desktop/Proiect/date DASHBOARD.csv",row.names=1) date
+attach(date) View(date) dim(date)
+ui <- dashboardPage( ############# Header
+dashboardHeader(title = "UE Economic Growth Indicators"), ############# Sidebar
+dashboardSidebar( sidebarMenu(
+menuItem("DASHBOARD", tabName = "dashboard", icon = icon("dashboard"))
+)
+),
+############# Dashboard body dashboardBody(
+# Boxes need to be put in a row (or column) fluidRow(
+box(title = "Alegeti din urmatoarea lista", status = "success", solidHeader = T, width = 12, fluidPage(
+fluidRow(
+column(2, offset = 0, style = 'padding:1px;', selectInput(inputId = "unit",
+label = "Tara",
+choices = row.names(date)))
+)
+)
+),
+column(width=8,
+box(title="Rata	de	crestere	economica",status="success",solidHeader	=	T, plotlyOutput("plot0"),width=NULL),
+ 
+box(title = "Rata inflatiei", status="success", solidHeader = T,plotOutput("plot1")), box(title="Rata somajului", status="success", solidHeader=T, plotOutput("plot2"))
+), ) ) ) #######
+####### Server #######
+server <- function(input, output, session) { output$plot0 <- renderPlotly({
+plot_ly(date, x = ~Growth.Rate, text = paste("Tara: ", row.names(date)), type = 'bar', mode = "markers", color = ~Growth.Rate)
+})
+output$plot1 <- renderPlot({ hist(date$Inflation.Rate,col="red",main="",xlab="")
+})
+output$plot2 <- renderPlot({ boxplot(date$Unemployment.Rate,col="orange",main="",xlab="")
+})
+}
+shinyApp(ui, server)
